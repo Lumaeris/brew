@@ -1,7 +1,12 @@
-FROM docker.io/library/alpine:latest AS build
+FROM cgr.dev/chainguard/wolfi-base:latest AS builder
 
-RUN exit 1
+RUN apk add curl git zstd posix-libc-utils uutils gnutar grep bash-binsh && \
+  curl --retry 3 -fsSLo "/tmp/brew-install" "https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh" && \
+  touch /.dockerenv && \
+  env --ignore-environment "PATH=/usr/bin:/bin:/usr/sbin:/sbin" "HOME=/home/linuxbrew" "NONINTERACTIVE=1" /usr/bin/bash /tmp/brew-install && \
+  mkdir -p /out && \
+  tar --zstd -cvf "/out/homebrew.tar.zst" "/home/linuxbrew/.linuxbrew"
 
 FROM scratch AS ctx
-COPY /system_files/shared /system_files/shared/
-COPY --from=build /out/homebrew.tar.zstd /system_files/usr/share/homebrew.tar.zstd
+COPY system_files /system_files
+COPY --from=builder /out/homebrew.tar.zst /system_files/usr/share/homebrew.tar.zst
